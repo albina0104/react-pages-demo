@@ -1,4 +1,4 @@
-name: Build and Deploy React App to GitHub Pages
+name: GitHub Actions Build and Deploy
 on:
   push:
     branches: [master]
@@ -9,17 +9,26 @@ jobs:
     permissions:
       id-token: write
       pages: write
-
     steps:
-      - name: Checkout
+      - name: Check out repository code
         uses: actions/checkout@v3
-
-      - name: Build
-        run: npm install
-
-      - name: Deploy
-        run: |
-          git config --global user.name 'Albina Salkayeva'
-          git config --global user.email 'salkaeva.a@gmail.com'
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          npm run deploy
+      - run: cd ${{ github.workspace }}
+      - name: Cache dependencies
+        id: cache-npm
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: node_modules
+          key: npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-
+      - name: Install dependencies
+        if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
+        run: npm ci --ignore-scripts
+      - run: npm run build
+      - name: Upload pages
+        uses: actions/upload-pages-artifact@v1
+      - name: Deploy pages
+        uses: actions/deploy-pages@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
